@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  mysql-pedidos:
+    image: mysql:8.0
+    container_name: mysql-pedidos
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-alurafood-pedido}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - pedidos-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  pedidos-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pedidos-app
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-pedidos:3306/${MYSQL_DATABASE:-alurafood-pedido}?createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+    depends_on:
+      mysql-pedidos:
+        condition: service_healthy
+    networks:
+      - pedidos-network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  pedidos-network:
+    driver: bridge
+
